@@ -1,7 +1,7 @@
-import { FC } from 'react'
-import { Movie } from '../models/Movie'
-import { useState } from 'react'
-import { Box, Button, FormControl, FormLabel, Input, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Textarea } from '@chakra-ui/react'
+import { FC } from 'react';
+import { Movie } from '../models/Movie';
+import { useState } from 'react';
+import { Box, Button, FormControl, FormLabel, Input, NumberDecrementStepper, NumberIncrementStepper, NumberInput, NumberInputField, NumberInputStepper, Textarea } from '@chakra-ui/react';
 import * as web3 from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 
@@ -10,37 +10,36 @@ const MOVIE_REVIEW_PROGRAM_ID = 'CenYq6bDRB7p73EjsPEpiYN7uveyPUTdXkDkgUduboaN'
 export const Form: FC = () => {
     const [title, setTitle] = useState('')
     const [rating, setRating] = useState(0)
-    const [description, setDescription] = useState('')
+    const [message, setMessage] = useState('')
 
     const { connection } = useConnection();
     const { publicKey, sendTransaction } = useWallet();
 
     const handleSubmit = (event: any) => {
         event.preventDefault()
-        const movie = new Movie(title, rating, description)
+        const movie = new Movie(title, rating, message)
         handleTransactionSubmit(movie)
     }
 
     const handleTransactionSubmit = async (movie: Movie) => {
+        // Check that publicKey exists to ensure that the user has connected their wallet.
         if (!publicKey) {
             alert('Please connect your wallet!')
             return
         }
-
-        const buffer = movie.serialize()
-        const transaction = new web3.Transaction()
-
+        // Get all of the accounts that the transaction will read from or write to. pda is the program data account
         const [pda] = await web3.PublicKey.findProgramAddress(
-            [publicKey.toBuffer(), Buffer.from(movie.title)],// new TextEncoder().encode(movie.title)],
+            [publicKey.toBuffer(), Buffer.from(movie.title)],
             new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
         )
 
+        // Create a new Instruction object that includes all of these accounts in the keys argument, includes the buffer in the data argument, and includes the program’s public key in the programId argument.
         const instruction = new web3.TransactionInstruction({
             keys: [
                 {
                     pubkey: publicKey,
                     isSigner: true,
-                    isWritable: false,
+                    isWritable: false
                 },
                 {
                     pubkey: pda,
@@ -53,18 +52,16 @@ export const Form: FC = () => {
                     isWritable: false
                 }
             ],
-            data: buffer,
+            data: movie.serialize(),
             programId: new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
         })
 
-        transaction.add(instruction)
-
         try {
-            let txid = await sendTransaction(transaction, connection)
-            alert(`Transaction submitted: https://explorer.solana.com/tx/${txid}?cluster=devnet`)
+            // Add the instruction from the last step to the transaction.
+            // Call sendTransaction, passing in the assembled transaction.
+            let txid = await sendTransaction(new web3.Transaction().add(instruction), connection)
             console.log(`Transaction submitted: https://explorer.solana.com/tx/${txid}?cluster=devnet`)
         } catch (e) {
-            console.log(JSON.stringify(e))
             alert(JSON.stringify(e))
         }
     }
@@ -96,7 +93,7 @@ export const Form: FC = () => {
                     <Textarea
                         id='review'
                         color='gray.400'
-                        onChange={event => setDescription(event.currentTarget.value)}
+                        onChange={event => setMessage(event.currentTarget.value)}
                     />
                 </FormControl>
                 <FormControl isRequired>
