@@ -15,6 +15,12 @@ export class StudentIntro {
         new StudentIntro('Terminator', `i'm basically here to protect`),
     ]
 
+    static borshAccountSchema = borsh.struct([
+        borsh.bool('initialized'),
+        borsh.str('name'),
+        borsh.str('message')
+    ])
+
     borshInstructionSchema = borsh.struct([
         borsh.u8('variant'),
         borsh.str('name'),
@@ -25,5 +31,19 @@ export class StudentIntro {
         const buffer = Buffer.alloc(1000)
         this.borshInstructionSchema.encode({ variant: 0, ...this }, buffer)
         return buffer.slice(0, this.borshInstructionSchema.getSpan(buffer))
+    }
+
+    static deserialize(buffer?: Buffer): StudentIntro | null {
+        if (!buffer) {
+            return null
+        }
+
+        try {
+            const { name, message } = this.borshAccountSchema.decode(buffer)
+            return new StudentIntro(name, message)
+        } catch (error) {
+            console.log('Deserialization error:', error)
+            return null
+        }
     }
 }
