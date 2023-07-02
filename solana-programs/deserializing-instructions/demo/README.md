@@ -6,8 +6,7 @@ cd demo
 
 2. Run local validator
 ```
-cargo add solana-program
-cargo add borsh
+solana-test-validator
 ```
 
 3. Listen to local host logs
@@ -18,6 +17,7 @@ solana logs --url localhost
 4. Add solana-program dep
 ```
 cargo add solana-program
+cargo add borsh
 ```
 
 5. Add lib dependency to Cargo toml
