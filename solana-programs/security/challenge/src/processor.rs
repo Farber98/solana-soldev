@@ -28,6 +28,9 @@ pub fn process_instruction(
         StudentInstruction::AddStudentGreeting { name, message } => {
             add_student_greeting(program_id, accounts, name, message)
         }
+        StudentInstruction::UpdateStudentGreeting { message } => {
+            update_student_greeting(program_id, accounts, message)
+        }
     }
 }
 
@@ -63,11 +66,7 @@ pub fn add_student_greeting(
         return Err(StudentError::InvalidPDA.into());
     }
 
-    let total_len: usize = 1 + 1 + (4 + name.len()) + (4 + message.len());
-    if total_len > 1000 {
-        msg!("Data length is larger than 1000 bytes");
-        return Err(StudentError::InvalidDataLength.into());
-    }
+    let total_len: usize = 1000;
 
     // Calculate rent required
     let rent = Rent::get()?;
@@ -79,7 +78,7 @@ pub fn add_student_greeting(
             initializer.key,
             pda_account.key,
             rent_lamports,
-            total_len.try_into().unwrap(),
+            total_len.try_into().unwrap(), // 1000 Bytes max.
             program_id,
         ),
         &[
@@ -114,6 +113,78 @@ pub fn add_student_greeting(
     account_data.is_initialized = true;
     account_data.name = name;
     account_data.message = message;
+
+    msg!("serializing account");
+    account_data.serialize(&mut &mut pda_account.data.borrow_mut()[..])?;
+    msg!("state account serialized");
+
+    Ok(())
+}
+
+pub fn update_student_greeting(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    message: String,
+) -> ProgramResult {
+    msg!("Updating student greeting...");
+
+    // Get accounts
+    let account_info_iter = &mut accounts.iter();
+    let initializer = next_account_info(account_info_iter)?;
+    let pda_account = next_account_info(account_info_iter)?;
+
+    // Check program is owner of given PDA
+    if pda_account.owner != program_id {
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    // Check Signer
+    if !initializer.is_signer {
+        msg!("Missing required signature");
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    msg!("unpacking state account");
+    let mut account_data =
+        try_from_slice_unchecked::<StudentAccountState>(&pda_account.data.borrow()).unwrap();
+    msg!("Student name: {}", account_data.name);
+
+    // Derive PDA
+    let (pda, _bump_seed) = Pubkey::find_program_address(
+        &[
+            initializer.key.as_ref(),
+            account_data.name.as_bytes().as_ref(),
+        ],
+        program_id,
+    );
+
+    // Check Derived PDA is equal to given PDA.
+    if pda != *pda_account.key {
+        msg!("Invalid seeds for PDA");
+        return Err(StudentError::InvalidPDA.into());
+    }
+
+    msg!("checking if student account is initialized");
+    if !account_data.is_initialized() {
+        msg!("Account is not initialized");
+        return Err(StudentError::UninitializedAccount.into());
+    }
+
+    let update_len: usize = 1 + 1 + (4 + message.len()) + account_data.name.len();
+    if update_len > 1000 {
+        msg!("Data length is larger than 1000 bytes");
+        return Err(StudentError::InvalidDataLength.into());
+    }
+
+    msg!("Review before update:");
+    msg!("Name: {}", account_data.name);
+    msg!("Message: {}", account_data.message);
+
+    account_data.message = message;
+
+    msg!("Review after update:");
+    msg!("Name: {}", account_data.name);
+    msg!("Message: {}", account_data.message);
 
     msg!("serializing account");
     account_data.serialize(&mut &mut pda_account.data.borrow_mut()[..])?;

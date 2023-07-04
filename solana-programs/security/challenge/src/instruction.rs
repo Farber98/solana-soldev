@@ -3,6 +3,7 @@ use solana_program::program_error::ProgramError;
 
 pub enum StudentInstruction {
     AddStudentGreeting { name: String, message: String },
+    UpdateStudentGreeting { message: String },
 }
 
 #[derive(BorshDeserialize)]
@@ -27,6 +28,9 @@ impl StudentInstruction {
         Ok(match variant {
             0 => Self::AddStudentGreeting {
                 name: payload.name,
+                message: payload.message,
+            },
+            1 => Self::UpdateStudentGreeting {
                 message: payload.message,
             },
             _ => return Err(ProgramError::InvalidInstructionData),

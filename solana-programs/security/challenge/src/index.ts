@@ -35,12 +35,62 @@ const studentInstructionLayout = borsh.struct([
 
 async function sendTestStudentGreeting(signer: web3.Keypair, programId: web3.PublicKey, connection: web3.Connection) {
     let buffer = Buffer.alloc(1000)
-    const studentName = `jfarber${Math.random() * 1000000}`
+    const studentName = `jfarber 7`
     studentInstructionLayout.encode(
         {
             variant: 0,
             name: studentName,
             message: 'Hello Solana!'
+        },
+        buffer
+    )
+
+    buffer = buffer.slice(0, studentInstructionLayout.getSpan(buffer))
+
+    const [pda] = await web3.PublicKey.findProgramAddress(
+        [signer.publicKey.toBuffer(), Buffer.from(studentName)],
+        programId
+    )
+
+    console.log("PDA is:", pda.toBase58())
+
+    const transaction = new web3.Transaction()
+
+    const instruction = new web3.TransactionInstruction({
+        programId: programId,
+        data: buffer,
+        keys: [
+            {
+                pubkey: signer.publicKey,
+                isSigner: true,
+                isWritable: false
+            },
+            {
+                pubkey: pda,
+                isSigner: false,
+                isWritable: true
+            },
+            {
+                pubkey: web3.SystemProgram.programId,
+                isSigner: false,
+                isWritable: false
+            }
+        ]
+    })
+
+    transaction.add(instruction)
+    const tx = await web3.sendAndConfirmTransaction(connection, transaction, [signer])
+    console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`)
+}
+
+async function updateTestStudentGreeting(signer: web3.Keypair, programId: web3.PublicKey, connection: web3.Connection) {
+    let buffer = Buffer.alloc(1000)
+    const studentName = `jfarber 7`
+    studentInstructionLayout.encode(
+        {
+            variant: 1,
+            name: studentName,
+            message: 'Bye Bye Ethereum!'
         },
         buffer
     )
@@ -91,6 +141,11 @@ async function main() {
 
     const studentProgramId = new web3.PublicKey('65d7xP25coZgYCwKiFnnqwqhLZG4yrKqcMZAg6aUa2NB')
     await sendTestStudentGreeting(signer, studentProgramId, connection)
+
+    setTimeout(() => {
+    }, 5000);
+
+    await updateTestStudentGreeting(signer, studentProgramId, connection)
 }
 
 main().then(() => {
