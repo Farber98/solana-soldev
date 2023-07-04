@@ -1,3 +1,4 @@
+use crate::error::StudentError;
 use crate::instruction::StudentInstruction;
 use crate::state::StudentAccountState;
 use borsh::BorshSerialize;
@@ -7,6 +8,8 @@ use solana_program::{
     entrypoint::ProgramResult,
     msg,
     program::invoke_signed,
+    program_error::ProgramError,
+    program_pack::IsInitialized,
     pubkey::Pubkey,
     system_instruction,
     sysvar::{rent::Rent, Sysvar},
@@ -42,21 +45,33 @@ pub fn add_student_greeting(
     let pda_account = next_account_info(account_info_iter)?;
     let system_program = next_account_info(account_info_iter)?;
 
+    // Signer Check
+    if !initializer.is_signer {
+        msg!("Missing required signature");
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
     // Derive PDA and check that it matches client
     let (pda, bump_seed) = Pubkey::find_program_address(
         &[initializer.key.as_ref(), name.as_bytes().as_ref()],
         program_id,
     );
 
-    // Calculate account size required
-    // The MovieAccountState struct has four fields.
-    // 1 byte for is_initialized.
-    // 4 bytes + len() each for name and message.
-    let account_len: usize = 1 + 1 + (4 + name.len()) + (4 + message.len());
+    // Validate PDA
+    if pda != *pda_account.key {
+        msg!("Invalid seeds for PDA");
+        return Err(StudentError::InvalidPDA.into());
+    }
+
+    let total_len: usize = 1 + 1 + (4 + name.len()) + (4 + message.len());
+    if total_len > 1000 {
+        msg!("Data length is larger than 1000 bytes");
+        return Err(StudentError::InvalidDataLength.into());
+    }
 
     // Calculate rent required
     let rent = Rent::get()?;
-    let rent_lamports = rent.minimum_balance(account_len);
+    let rent_lamports = rent.minimum_balance(total_len);
 
     // Create the account signing with program.
     invoke_signed(
@@ -64,7 +79,7 @@ pub fn add_student_greeting(
             initializer.key,
             pda_account.key,
             rent_lamports,
-            account_len.try_into().unwrap(),
+            total_len.try_into().unwrap(),
             program_id,
         ),
         &[
@@ -85,6 +100,12 @@ pub fn add_student_greeting(
     let mut account_data =
         try_from_slice_unchecked::<StudentAccountState>(&pda_account.data.borrow()).unwrap();
     msg!("borrowed account data");
+
+    // Checking if account data already initialized.
+    if account_data.is_initialized() {
+        msg!("Account already initialized");
+        return Err(ProgramError::AccountAlreadyInitialized);
+    }
 
     // Logging instruction data that was passed in
     msg!("Adding student greeting...");

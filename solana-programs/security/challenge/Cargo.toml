@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 borsh = "0.10.3"
 solana-program = "1.16.2"
+thiserror = "1.0.41"
 
 [lib]
 name = "challenge"
