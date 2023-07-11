@@ -17,3 +17,6 @@ default = []
 
 [dependencies]
 anchor-lang = "0.28.0"
+
+[programs.localnet]
+anchor_counter = "8FrZ8GeiCfEFkrPvEq8gXxfWtKgsSgZTYcfdz1f1bDm8"

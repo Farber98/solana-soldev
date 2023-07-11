@@ -25,6 +25,12 @@
     [programs.localnet]
     anchor_counter = "key"
 
+
+6. Install npm deps for tests
+    
+    ```
+    npm i --save-dev @types/mocha @project-serum/anchor
+
 7. Delete default code in lib.rs and let the following
 
     ```
@@ -37,3 +43,7 @@
         use super::*;
 
     }
+
+8. Run tests
+    ```
+    anchor test
