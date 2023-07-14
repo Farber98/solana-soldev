@@ -19,4 +19,4 @@ default = []
 anchor-lang = "0.28.0"
 
 [programs.localnet]
-anchor_counter = "EvyMLMUiSLkBPtuG94vbMViADdKHwKgoc4iwrJqv5Baq"
+movie_review_program = "EvyMLMUiSLkBPtuG94vbMViADdKHwKgoc4iwrJqv5Baq"
